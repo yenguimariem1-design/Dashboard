@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OliveSoft — LinkedIn Analytics Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: #e8edf2; padding: 16px; }
+    .db { max-width: 1200px; margin: auto; }
+    .header { background: #0a2540; color: #fff; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-radius: 12px 12px 0 0; }
+    .logo { font-size: 20px; font-weight: 700; color: #4caf84; letter-spacing: -0.5px; }
+    .logo span { color: #fff; }
+    .hdr-sub { font-size: 12px; color: #8fafc7; margin-top: 2px; }
+    .hdr-range { font-size: 12px; background: #1a3a56; color: #8fafc7; padding: 5px 12px; border-radius: 20px; }
+    .section-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: #fff; background: #1565c0; padding: 4px 12px 4px 20px; margin: 0; }
+    .section-label.green { background: #2e7d32; }
+    .section-label.amber { background: #b07800; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 12px 20px; background: #f0f4f8; }
+    .kpi { background: #fff; border-radius: 8px; padding: 10px 12px; border: 0.5px solid #d0dae6; animation: slideUp 0.6s ease-out forwards; opacity: 0; }
+    .kpi:nth-child(1) { animation-delay: 0.1s; }
+    .kpi:nth-child(2) { animation-delay: 0.2s; }
+    .kpi:nth-child(3) { animation-delay: 0.3s; }
+    .kpi:nth-child(4) { animation-delay: 0.4s; }
+    .kpi:nth-child(5) { animation-delay: 0.5s; }
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .kpi-label { font-size: 10px; color: #607d8b; font-weight: 500; margin-bottom: 4px; }
+    .kpi-value { font-size: 22px; font-weight: 700; color: #0a2540; line-height: 1; }
+    .kpi-sub { font-size: 10px; color: #4caf84; margin-top: 3px; }
+    .kpi-sub.neg { color: #e53935; }
+    .kpi-sub.neu { color: #607d8b; }
+    .charts-row { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 10px; padding: 10px 20px; background: #f0f4f8; }
+    .chart-card { background: #fff; border-radius: 8px; padding: 10px 12px; border: 0.5px solid #d0dae6; display: flex; flex-direction: column; justify-content: flex-start; height: 100%; animation: fadeIn 0.8s ease-out; }
+    .chart-title { font-size: 10px; font-weight: 700; color: #607d8b; letter-spacing: 0.5px; margin-bottom: 6px; }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .audience-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: start; gap: 10px; padding: 10px 20px; background: #f0f4f8; }
+    .bottom-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1.1fr; gap: 10px; padding: 10px 20px 14px; background: #f0f4f8; border-radius: 0 0 12px 12px; }
+    .persona-box { background: #0a2540; border-radius: 8px; padding: 10px 12px; color: #fff; height: 100%; }
+    .persona-title { font-size: 10px; font-weight: 700; color: #4caf84; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .persona-tag { display: inline-block; font-size: 9px; background: #1a3a56; color: #8fafc7; padding: 2px 7px; border-radius: 10px; margin: 2px 2px 2px 0; }
+    .persona-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; font-size: 10px; color: #8fafc7; }
+    .persona-row strong { color: #fff; font-size: 11px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .insight-box { background: #e8f5e9; border-left: 3px solid #4caf84; border-radius: 0 8px 8px 0; padding: 6px 10px; margin-top: 6px; font-size: 9px; color: #1b5e20; }
+    .warn-box { background: #fff8e1; border-left: 3px solid #ffa000; border-radius: 0 8px 8px 0; padding: 6px 10px; margin-top: 6px; font-size: 9px; color: #6d4c00; }
+    .status-bar { display: flex; align-items: center; gap: 10px; padding: 8px 20px; background: #0a2540; color: #8fafc7; font-size: 11px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf84; animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .status-dot.loading { background: #ffb300; }
+    .refresh-time { margin-left: auto; }
+
+    @media (max-width: 1100px) {
+      .charts-row { grid-template-columns: 1.6fr 1fr; }
+      .bottom-grid { grid-template-columns: 1fr 1fr; }
+      .audience-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 820px) {
+      body { padding: 10px; }
+      .db { max-width: 100%; }
+      .header { flex-wrap: wrap; justify-content: center; gap: 10px; }
+      .header-end { width: 100%; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+      .hdr-range { width: auto; }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .charts-row, .bottom-grid, .audience-row { grid-template-columns: 1fr; }
+      .chart-card { min-height: auto; }
+      .status-bar { flex-wrap: wrap; }
+      .refresh-time { margin-left: 0; }
+    }
+
+    @media (max-width: 560px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+      .hdr-range { font-size: 11px; }
+      .chart-title { font-size: 9px; }
+      .kpi-value { font-size: 20px; }
+      .kpi-label, .kpi-sub, .hdr-sub { font-size: 11px; }
+      .persona-tag { font-size: 8px; padding: 2px 6px; }
+      .chart-card { padding: 8px 10px; }
+      .status-bar { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+<div class="status-bar" id="status-bar">
+  <div class="status-dot" id="status-dot"></div>
+  <span id="status-text">Initializing dashboard...</span>
+  <div class="refresh-time" id="refresh-time">Last update: never</div>
+</div>
+<div class="db">
+  <div class="header">
+    <div>
+      <div class="logo"><span>Olive</span>Soft <span style="font-size:13px;font-weight:400;color:#8fafc7;margin-left:8px">LINKEDIN ANALYTICS DASHBOARD</span></div>
+      <div class="hdr-sub">Audience &amp; Growth Insights — All data sourced from LinkedIn Company Page Analytics</div>
+    </div>
+    <div class="hdr-range" id="hdr-range">May 13, 2025 – May 12, 2026</div>
+  </div>
+
+  <!-- PART 1 -->
+  <div class="section-label">▶ PART 1 — FOLLOWER GROWTH PERFORMANCE</div>
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">TOTAL NEW FOLLOWERS</div>
+      <div class="kpi-value" id="kpi-total-followers">5,192</div>
+      <div class="kpi-sub" id="kpi-total-desc">↑ Gained over 12 months</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">AVG MONTHLY GROWTH</div>
+      <div class="kpi-value" id="kpi-avg-growth">388</div>
+      <div class="kpi-sub" id="kpi-avg-desc">new followers/month (avg full months)</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">ORGANIC FOLLOWERS</div>
+      <div class="kpi-value" id="kpi-organic">100%</div>
+      <div class="kpi-sub" id="kpi-organic-desc">↑ Entirely organic — no ads</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">SPONSORED FOLLOWERS</div>
+      <div class="kpi-value" id="kpi-sponsored">0%</div>
+      <div class="kpi-sub neu" id="kpi-sponsored-desc">No sponsored campaigns run</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">AUTO-INVITED FOLLOWERS</div>
+      <div class="kpi-value" id="kpi-auto">0%</div>
+      <div class="kpi-sub neu" id="kpi-auto-desc">No auto-invite activity</div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">MONTHLY NEW FOLLOWERS — BAR CHART</div>
+      <div style="position:relative;height:170px;">
+        <canvas id="barChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">FOLLOWERS BY SOURCE — STACKED</div>
+      <div style="position:relative;height:170px;">
+        <canvas id="sourceChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">GROWTH TREND — LINE</div>
+      <div style="position:relative;height:170px;">
+        <canvas id="lineChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART 2 -->
+  <div class="section-label green">▶ PART 2 — AUDIENCE PROFILE DASHBOARD</div>
+  <div class="audience-row">
+    <div class="chart-card">
+      <div class="chart-title">BY LOCATION</div>
+      <div style="position:relative;height:120px;">
+        <canvas id="locChart"></canvas>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+        <span style="font-size:9px;display:flex;align-items:center;gap:3px;color:#607d8b"><span style="width:8px;height:8px;border-radius:2px;background:#1565c0;display:inline-block"></span>Tunisia 90%</span>
+        <span style="font-size:9px;display:flex;align-items:center;gap:3px;color:#607d8b"><span style="width:8px;height:8px;border-radius:2px;background:#4caf84;display:inline-block"></span>France 11%</span>
+        <span style="font-size:9px;display:flex;align-items:center;gap:3px;color:#607d8b"><span style="width:8px;height:8px;border-radius:2px;background:#ffb300;display:inline-block"></span>Morocco 4%</span>
+        <span style="font-size:9px;display:flex;align-items:center;gap:3px;color:#607d8b"><span style="width:8px;height:8px;border-radius:2px;background:#90a4ae;display:inline-block"></span>Other 5%</span>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">BY JOB FUNCTION</div>
+      <div style="position:relative;height:120px;">
+        <canvas id="funcChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">BY SENIORITY</div>
+      <div style="position:relative;height:120px;">
+        <canvas id="senChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">BY INDUSTRY</div>
+      <div style="position:relative;height:120px;">
+        <canvas id="indChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">BY COMPANY SIZE</div>
+      <div style="position:relative;height:120px;">
+        <canvas id="sizeChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART 3 -->
+  <div class="section-label amber">▶ PART 3 — DECISION MAKERS &amp; MARKET FIT</div>
+  <div class="bottom-grid">
+    <div class="chart-card">
+      <div class="chart-title">JUNIORS VS DECISION MAKERS</div>
+      <div style="position:relative;height:130px;">
+        <canvas id="jdChart"></canvas>
+      </div>
+      <div class="warn-box">⚠ Only 7.5% are decision-makers (Mgr/Dir/VP/CXO)</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">SME VS ENTERPRISE DISTRIBUTION</div>
+      <div style="position:relative;height:130px;">
+        <canvas id="smeChart"></canvas>
+      </div>
+      <div class="insight-box">✔ Strong SME reach — ideal for B2B SaaS mid-market</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">KEY INDICATORS SUMMARY</div>
+      <div style="margin-top:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid #d0dae6;">
+          <span style="font-size:10px;color:#607d8b">% Students / Juniors</span>
+          <span style="font-size:14px;font-weight:700;color:#0a2540">68.5%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid #d0dae6;">
+          <span style="font-size:10px;color:#607d8b">% Decision Makers</span>
+          <span style="font-size:14px;font-weight:700;color:#1565c0">7.5%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid #d0dae6;">
+          <span style="font-size:10px;color:#607d8b">% SME (11–500 emp.)</span>
+          <span style="font-size:14px;font-weight:700;color:#4caf84">52%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;">
+          <span style="font-size:10px;color:#607d8b">% Enterprise (500+)</span>
+          <span style="font-size:14px;font-weight:700;color:#0a2540">35.7%</span>
+        </div>
+      </div>
+      <div class="insight-box">✔ B2B SaaS ICP partially matched — company size strong, seniority needs work</div>
+    </div>
+    <div class="persona-box">
+      <div class="persona-title">👤 TYPICAL OLIVESOFT FOLLOWER PERSONA</div>
+      <div class="persona-row"><div class="dot" style="background:#4caf84"></div><strong>Location:</strong></div>
+      <div style="font-size:9px;color:#8fafc7;margin-bottom:5px;padding-left:13px;">Tunis or Sfax metropolitan area, Tunisia</div>
+      <div class="persona-row"><div class="dot" style="background:#1565c0"></div><strong>Function:</strong></div>
+      <div style="font-size:9px;color:#8fafc7;margin-bottom:5px;padding-left:13px;">Software Engineer / IT professional</div>
+      <div class="persona-row"><div class="dot" style="background:#ffb300"></div><strong>Seniority:</strong></div>
+      <div style="font-size:9px;color:#8fafc7;margin-bottom:5px;padding-left:13px;">Entry-level or Senior IC — not yet in management</div>
+      <div class="persona-row"><div class="dot" style="background:#e53935"></div><strong>Industry:</strong></div>
+      <div style="font-size:9px;color:#8fafc7;margin-bottom:5px;padding-left:13px;">IT Services, Software Dev, or Tech consulting</div>
+      <div class="persona-row"><div class="dot" style="background:#4caf84"></div><strong>Company:</strong></div>
+      <div style="font-size:9px;color:#8fafc7;margin-bottom:5px;padding-left:13px;">SME 11–200 employees</div>
+      <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:3px;">
+        <span class="persona-tag">Tech-savvy</span>
+        <span class="persona-tag">Tunisia-based</span>
+        <span class="persona-tag">Junior/Mid-level</span>
+        <span class="persona-tag">SME sector</span>
+        <span class="persona-tag">Engineering mindset</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BLUE = '#1565c0', GREEN = '#4caf84', AMBER = '#ffb300', GRAY = '#90a4ae';
+const DARK = '#0a2540', RED = '#e53935', TEAL = '#00897b', LBLUE = '#42a5f5';
+const baseOpts = { responsive: true, maintainAspectRatio: false, devicePixelRatio: window.devicePixelRatio || 1, plugins: { legend: { display: false } } };
+let olivesoft_followers = null;
+
+function formatPercentage(value) {
+  return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`;
+}
+
+function updateText(id, text) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = text;
+}
+
+function computeKpis(data) {
+  const total = data.monthly.values.reduce((sum, n) => sum + n, 0);
+  const avg = Math.round(total / data.monthly.values.length);
+  const totalOrganic = data.monthly.sourceBreakdown.organic.reduce((sum, n) => sum + n, 0);
+  const totalSponsored = data.monthly.sourceBreakdown.sponsored.reduce((sum, n) => sum + n, 0);
+  const totalAuto = data.monthly.sourceBreakdown.autoInvited.reduce((sum, n) => sum + n, 0);
+  const organicRate = total > 0 ? (totalOrganic / total) * 100 : 0;
+  const sponsoredRate = total > 0 ? (totalSponsored / total) * 100 : 0;
+  const autoRate = total > 0 ? (totalAuto / total) * 100 : 0;
+  return { total, avg, organicRate, sponsoredRate, autoRate };
+}
+
+function buildDashboard(data) {
+  const kpis = computeKpis(data);
+  updateText('hdr-range', data.dateRange);
+  updateText('kpi-total-followers', kpis.total.toLocaleString());
+  updateText('kpi-avg-growth', kpis.avg.toLocaleString());
+  updateText('kpi-organic', formatPercentage(kpis.organicRate));
+  updateText('kpi-sponsored', formatPercentage(kpis.sponsoredRate));
+  updateText('kpi-auto', formatPercentage(kpis.autoRate));
+  updateText('kpi-total-desc', `↑ Gained over ${data.monthly.labels.length} months`);
+  updateText('kpi-sponsored-desc', kpis.sponsoredRate === 0 ? 'No sponsored campaigns run' : 'Includes sponsored follower gains');
+  updateText('kpi-auto-desc', kpis.autoRate === 0 ? 'No auto-invite activity' : 'Includes auto-invite follower gains');
+  updateText('kpi-organic-desc', kpis.organicRate === 100 ? '↑ Entirely organic — no ads' : 'Majority organic growth');
+
+  new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: data.monthly.labels,
+      datasets: [{ label: 'New Followers', data: data.monthly.values, backgroundColor: data.monthly.values.map((_, idx) => idx === 0 || idx >= 5 && idx <= 7 ? GREEN : GRAY), borderRadius: 3 }]
+    },
+    options: { ...baseOpts, scales: { x: { ticks: { font: { size: 9 }, autoSkip: false, maxRotation: 40 }, grid: { display: false } }, y: { ticks: { font: { size: 9 } }, grid: { color: '#f0f4f8' } } } }
+  });
+
+  new Chart(document.getElementById('sourceChart'), {
+    type: 'bar',
+    data: {
+      labels: data.monthly.labels,
+      datasets: [
+        { label: 'Organic', data: data.monthly.sourceBreakdown.organic, backgroundColor: GREEN, borderRadius: 3 },
+        { label: 'Sponsored', data: data.monthly.sourceBreakdown.sponsored, backgroundColor: BLUE },
+        { label: 'Auto-invited', data: data.monthly.sourceBreakdown.autoInvited, backgroundColor: AMBER }
+      ]
+    },
+    options: { ...baseOpts, scales: { x: { stacked: true, ticks: { font: { size: 8 }, autoSkip: false, maxRotation: 40 }, grid: { display: false } }, y: { stacked: true, ticks: { font: { size: 9 } }, grid: { color: '#f0f4f8' } } } }
+  });
+
+  new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+      labels: data.monthly.labels,
+      datasets: [{ label: 'Monthly followers', data: data.monthly.values, borderColor: BLUE, backgroundColor: 'rgba(21,101,192,0.08)', fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: BLUE }]
+    },
+    options: { ...baseOpts, scales: { x: { ticks: { font: { size: 8 }, autoSkip: false, maxRotation: 40 }, grid: { display: false } }, y: { ticks: { font: { size: 9 } }, grid: { color: '#f0f4f8' } } } }
+  });
+
+  new Chart(document.getElementById('locChart'), {
+    type: 'doughnut',
+    data: { labels: data.audience.location.labels, datasets: [{ data: data.audience.location.values, backgroundColor: [BLUE,GREEN,AMBER,GRAY], borderWidth: 1, borderColor: '#fff' }] },
+    options: { ...baseOpts, cutout: '65%' }
+  });
+
+  new Chart(document.getElementById('funcChart'), {
+    type: 'bar',
+    data: { labels: data.audience.function.labels, datasets: [{ data: data.audience.function.values, backgroundColor: [BLUE,TEAL,GREEN,AMBER,GRAY], borderRadius: 3 }] },
+    options: { ...baseOpts, indexAxis: 'y', scales: { x: { ticks: { font: { size: 8 }, callback: v => `${v}%` }, grid: { display: false } }, y: { ticks: { font: { size: 8 } }, grid: { display: false } } } }
+  });
+
+  new Chart(document.getElementById('senChart'), {
+    type: 'doughnut',
+    data: { labels: data.audience.seniority.labels, datasets: [{ data: data.audience.seniority.values, backgroundColor: [GRAY,BLUE,LBLUE,RED], borderWidth: 1, borderColor: '#fff' }] },
+    options: { ...baseOpts, cutout: '60%', plugins: { legend: { display: true, position: 'right', labels: { font: { size: 8 }, boxWidth: 8, padding: 4 } } } }
+  });
+
+  new Chart(document.getElementById('indChart'), {
+    type: 'bar',
+    data: { labels: data.audience.industry.labels, datasets: [{ data: data.audience.industry.values, backgroundColor: [BLUE,TEAL,GREEN,AMBER,GRAY], borderRadius: 3 }] },
+    options: { ...baseOpts, indexAxis: 'y', scales: { x: { ticks: { font: { size: 8 }, callback: v => `${v}%` }, grid: { display: false } }, y: { ticks: { font: { size: 8 } }, grid: { display: false } } } }
+  });
+
+  new Chart(document.getElementById('sizeChart'), {
+    type: 'bar',
+    data: { labels: data.audience.companySize.labels, datasets: [{ data: data.audience.companySize.values, backgroundColor: [GRAY,GRAY,BLUE,BLUE,TEAL,AMBER,AMBER,GRAY,GRAY], borderRadius: 3 }] },
+    options: { ...baseOpts, scales: { x: { ticks: { font: { size: 7 }, autoSkip: false, maxRotation: 40 }, grid: { display: false } }, y: { ticks: { font: { size: 8 }, callback: v => `${v}%` }, grid: { color: '#f0f4f8' } } } }
+  });
+
+  new Chart(document.getElementById('jdChart'), {
+    type: 'bar',
+    data: { labels: data.audience.decisionSplit.labels, datasets: [{ data: data.audience.decisionSplit.values, backgroundColor: [GRAY,BLUE,RED], borderRadius: 4 }] },
+    options: { ...baseOpts, scales: { x: { ticks: { font: { size: 8 } }, grid: { display: false } }, y: { ticks: { font: { size: 8 }, callback: v => `${v}%` }, grid: { color: '#f0f4f8' } } } }
+  });
+
+  new Chart(document.getElementById('smeChart'), {
+    type: 'doughnut',
+    data: { labels: data.audience.smeEnterprise.labels, datasets: [{ data: data.audience.smeEnterprise.values, backgroundColor: [GREEN,BLUE,GRAY], borderWidth: 1, borderColor: '#fff' }] },
+    options: { ...baseOpts, cutout: '58%', plugins: { legend: { display: true, position: 'right', labels: { font: { size: 8 }, boxWidth: 8, padding: 4 } } } }
+  });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  fetch('/api/olivesoft_followers')
+    .then(response => {
+      if (!response.ok) throw new Error(response.statusText);
+      return response.json();
+    })
+    .then(data => {
+      olivesoft_followers = data;
+      buildDashboard(data);
+    })
+    .catch(error => {
+      console.error('Unable to load dynamic dashboard data:', error);
+    });
+});
+</script>
+</body>
+</html>
+
