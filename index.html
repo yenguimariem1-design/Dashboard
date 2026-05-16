@@ -380,7 +380,7 @@ function buildDashboard(data) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  fetch('/api/olivesoft_followers')
+  fetch('/data/olivesoft_followers.json')
     .then(response => {
       if (!response.ok) throw new Error(response.statusText);
       return response.json();
